@@ -20,6 +20,7 @@ class ReversiGame: ObservableObject {
     @Published var board: [[CellState]]                 // 棋盘
     @Published var currentPlayer: CellState = .black    // 当前玩家
     @Published var gameOver = false                     // 游戏结束
+    @Published var emptyCells = 0                       // 空格子数
     @Published var blackScore = 0                       // 黑方分数（棋子数）
     @Published var whiteScore = 0                       // 白方分数（棋子数）
     
@@ -34,6 +35,7 @@ class ReversiGame: ObservableObject {
     
     // 更新分数
     func updateScores() {
+        emptyCells = board.flatMap { $0 }.filter { $0 == .empty }.count    // 更新空格子数
         blackScore = board.flatMap { $0 }.filter { $0 == .black }.count    // 更新黑方分数
         whiteScore = board.flatMap { $0 }.filter { $0 == .white }.count    // 更新白方分数
     }
@@ -201,9 +203,11 @@ struct ScoreView: View {
     var body: some View {
         HStack {
             Spacer()
-            PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+            PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
             Spacer()
-            PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+            PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
+            Spacer()
+            PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
             Spacer()
         }
         .padding()
@@ -214,7 +218,7 @@ struct ScoreView: View {
 struct PlayerScoreView: View {
     let cellState: CellState
     let count: Int
-    let currentPlayer: Bool
+    let isCurrentPlayer: Bool
     
     var body: some View {
         ZStack {
@@ -227,7 +231,7 @@ struct PlayerScoreView: View {
                 .foregroundColor(cellState == .black ? Color.white : Color.black)
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill((currentPlayer ? Color.green : Color.gray).opacity(0.5)))
+        .background(RoundedRectangle(cornerRadius: 10).fill((isCurrentPlayer ? Color.green : Color.gray).opacity(0.5)))
     }
 }
 
@@ -334,9 +338,11 @@ struct ContentView: View {
                     ControlView(game: game)
                     HStack {
                         Spacer()
-                        PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+                        PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
                         Spacer()
-                        PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+                        PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
+                        Spacer()
+                        PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
                         Spacer()
                     }
                     .padding()
@@ -354,9 +360,11 @@ struct ContentView: View {
                             Spacer()
                             ControlView(game: game)
                             Spacer()
-                            PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+                            PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
                             Spacer()
-                            PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+                            PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
+                            Spacer()
+                            PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
                             Spacer()
                         }
                         .padding()
