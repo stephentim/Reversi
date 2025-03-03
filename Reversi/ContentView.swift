@@ -184,8 +184,8 @@ struct CellView: View {
                 }
                 if game.isValidDrop(row: row, column: col, player: game.currentPlayer) {
                     Circle()
-                        .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.7))
-                        .padding(15)
+                        .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.4))
+                        .padding(18)
                 }
             }
             .aspectRatio(1, contentMode: .fit)
@@ -358,92 +358,5 @@ struct ContentView: View {
                 .background(Color.green.opacity(0.3))
             }
         }
-
-
-//        ZStack {
-//            VStack {
-//                HStack {
-//                    ScoreView(game: game)
-////                    Spacer()
-////                    CellView(
-////                        cellState: .black,
-////                        isValidDrop: false
-////                    )
-////                    .frame(width: 40, height: 40)
-////                    .overlay(Text("\(game.blackScore)")
-////                        .font(.title))
-////                    Spacer()
-////                    CellView(
-////                        cellState: .white,
-////                        isValidDrop: false
-////                    )
-////                    .frame(width: 40, height: 40)
-////                    .overlay(Text("\(game.whiteScore)")
-////                        .font(.title))
-////                    .foregroundColor(.black)
-////                    Spacer()
-//                }
-//                .padding()
-//                
-//                HStack {
-//                    Text("当前玩家： \(game.currentPlayer == .black ? "黑方" : "白方")")
-//                        .font(.headline)
-//                    CellView(
-//                        cellState: game.currentPlayer,
-//                        isValidDrop: false
-//                    )
-//                    .frame(width: 40, height: 40)
-//                }
-//                .border(Color.black, width: 2)
-//                .padding()
-//
-//                Grid(horizontalSpacing: 1, verticalSpacing: 1) {
-//                    ForEach(0..<8, id: \.self) { row in
-//                        GridRow {
-//                            ForEach(0..<8, id: \.self) { column in
-//                                CellView(
-//                                    cellState: game.board[row][column],
-//                                    isValidDrop: game.isValidDrop(row: row, column: column, player: game.currentPlayer)
-//                                )
-//                                .border(Color.black, width: 0.5)
-//                                .onTapGesture {
-//                                    if !game.gameOver {
-//                                        game.dropOnePiece(row: row, column: column)
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//                .border(Color.black, width: 1)
-//                .padding()
-//                Text("设计者：Tim\n版本号：\(appVersion)")
-//                    .font(.footnote)
-//                    .padding()
-//                .padding()
-//            }
-//            if game.gameOver {
-//                VStack {
-//                    Text("游戏结束！")
-//                        .font(.title)
-//                        .shadow(color: .black, radius: 3)
-//                    Text(game.blackScore > game.whiteScore ? "黑方胜" :
-//                         game.whiteScore > game.blackScore ? "白方胜" : "平局")
-//                        .font(.title2)
-//                        .shadow(color: .black, radius: 3)
-//                    Button("重新开始") {
-//                        game.reset()
-//                    }
-//                    .padding()
-//                    .background(Color.blue.opacity(0.5))
-//                    .foregroundColor(.white)
-//                    .shadow(color: .black, radius: 3)
-//                    .cornerRadius(8)
-//                }
-//                .background(Color.gray.opacity(0.5))
-//                .padding()
-//            }
-//        }
-//        .background(Color.gray.opacity(1.0))
     }
 }
