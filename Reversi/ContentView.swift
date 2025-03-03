@@ -234,19 +234,28 @@ struct PlayerScoreView: View {
 // 控制面板（竖屏）
 struct ControlView: View {
     @ObservedObject var game: ReversiGame
+    @State private var showResetConfirmation = false
 
     var body: some View {
         VStack {
             Button("重新开始") {
-                game.reset()
+                showResetConfirmation = true
             }
             .buttonStyle(.borderedProminent)
             .padding()
-            
+            .alert("确认重新开始", isPresented: $showResetConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("确定", role: .destructive) {
+                    game.reset()
+                }
+            } message: {
+                Text("确定要重新开始游戏吗？当前进度将会丢失。")
+            }
+
             if game.gameOver {
                 Text("游戏结束")
                     .font(.title)
-                    .foregroundColor(.red)
+                    .foregroundColor(.blue)
                 Text(game.blackScore > game.whiteScore ? "黑方胜" :
                      game.whiteScore > game.blackScore ? "白方胜" : "平局")
                     .font(.title)
@@ -255,7 +264,6 @@ struct ControlView: View {
         }
     }
 }
-
 // 横屏控制面板
 struct LandscapeControlView: View {
     @ObservedObject var game: ReversiGame
