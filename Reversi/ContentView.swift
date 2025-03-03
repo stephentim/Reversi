@@ -157,8 +157,10 @@ class ReversiGame: ObservableObject {
 
 // MARK: - View
 struct CellView: View {
-    let cellState: CellState
-    let isValidDrop: Bool
+    @ObservedObject var game: ReversiGame
+    let row: Int
+    let col: Int
+    
     @State private var flip = false
 
     var body: some View {
@@ -166,24 +168,24 @@ struct CellView: View {
             ZStack {
                 Rectangle()
                     .fill(Color.green)
-                if cellState != .empty {
+                if game.board[row][col] != .empty {
                     Circle()
-                        .fill(cellState == .black ? Color.black : Color.white)
+                        .fill(game.board[row][col] == .black ? Color.black : Color.white)
                         .padding(4)
                         .rotation3DEffect(
                             flip ? .degrees(180) : .zero,
                             axis: (x: 0.0, y: 1.0, z: 0.0)
                         )
-                        .onChange(of: cellState) { oldValue, newValue in
+                        .onChange(of: game.board[row][col]) { oldValue, newValue in
                             withAnimation(.easeInOut(duration: 0.5)) {
                                 flip.toggle()
                             }
                         }
                 }
-                if isValidDrop {
+                if game.isValidDrop(row: row, column: col, player: game.currentPlayer) {
                     Circle()
-                        .fill(Color.gray.opacity(0.4))
-                        .padding(20)
+                        .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.7))
+                        .padding(15)
                 }
             }
             .aspectRatio(1, contentMode: .fit)
@@ -192,89 +194,256 @@ struct CellView: View {
     }
 }
 
-// MARK: - ViewModel
-struct ContentView: View {
-    @StateObject var game = ReversiGame()
+// 计分板
+struct ScoreView: View {
+    @ObservedObject var game: ReversiGame
+    
+    var body: some View {
+        HStack {
+            Spacer()
+            PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+            Spacer()
+            PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+// 单个玩家分数视图
+struct PlayerScoreView: View {
+    let cellState: CellState
+    let count: Int
+    let currentPlayer: Bool
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(cellState == .black ? Color.black : Color.white)
+                .frame(width: 50, height: 50)
+                .padding(4)
+            Text("\(count)")
+                .font(.title.bold())
+                .foregroundColor(cellState == .black ? Color.white : Color.black)
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 10).fill((currentPlayer ? Color.green : Color.gray).opacity(0.5)))
+    }
+}
+
+// 控制面板（竖屏）
+struct ControlView: View {
+    @ObservedObject var game: ReversiGame
+
+    var body: some View {
+        VStack {
+            Button("重新开始") {
+                game.reset()
+            }
+            .buttonStyle(.borderedProminent)
+            .padding()
+            
+            if game.gameOver {
+                Text("游戏结束！")
+                    .font(.title)
+                    .foregroundColor(.red)
+            }
+        }
+    }
+}
+
+// 横屏控制面板
+struct LandscapeControlView: View {
+    @ObservedObject var game: ReversiGame
+    
+    var body: some View {
+        HStack {
+            Spacer()
+            VStack {
+                ControlView(game: game)
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.9)))
+                    .padding()
+            }
+        }
+    }
+}
+
+// 棋盘视图
+struct BoardView: View {
+    @ObservedObject var game: ReversiGame
+    
+    var body: some View {
+        Grid(horizontalSpacing: 1, verticalSpacing: 1) {
+            ForEach(0..<8, id: \.self) { row in
+                GridRow {
+                    ForEach(0..<8, id: \.self) { col in
+                        CellView(game: game, row: row, col: col)
+                        .border(Color.black, width: 0.5)
+                        .onTapGesture {
+                            if !game.gameOver {
+                                game.dropOnePiece(row: row, column: col)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .border(Color.black, width: 1)
+        .background(Color.black)
+    }
+}
+
+// 版权信息
+struct copyrightView: View {
     // 计算属性获取版本信息
     var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
         return "Version \(version) (Build \(build))"
     }
+    var body: some View {
+        Text("设计者：Tim\n版本号：\(appVersion)")
+            .font(.footnote)
+            .padding()
+        .padding()
+    }
+}
+
+// MARK: - ViewModel
+struct ContentView: View {
+    @StateObject var game = ReversiGame()
 
     var body: some View {
-        ZStack {
-            VStack {
-                HStack {
-                    Spacer()
-                    Text("黑方: \(game.blackScore)")
-                        .font(.title)
-                    Spacer()
-                    Text("白方: \(game.whiteScore)")
-                        .font(.title)
-                    Spacer()
-                }
-                .padding()
-                
-                HStack {
-                    Text("当前玩家： \(game.currentPlayer == .black ? "黑方" : "白方")")
-                        .font(.headline)
-                    CellView(
-                        cellState: game.currentPlayer,
-                        isValidDrop: false
-                    )
-                    .frame(width: 40, height: 40)
-                }
-                .border(Color.black, width: 2)
-                .padding()
-
-                Grid(horizontalSpacing: 1, verticalSpacing: 1) {
-                    ForEach(0..<8, id: \.self) { row in
-                        GridRow {
-                            ForEach(0..<8, id: \.self) { column in
-                                CellView(
-                                    cellState: game.board[row][column],
-                                    isValidDrop: game.isValidDrop(row: row, column: column, player: game.currentPlayer)
-                                )
-                                .border(Color.black, width: 0.5)
-                                .onTapGesture {
-                                    if !game.gameOver {
-                                        game.dropOnePiece(row: row, column: column)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .border(Color.black, width: 1)
-                .padding()
-                Text("设计者：Tim\n版本号：\(appVersion)")
-                    .font(.footnote)
-                    .padding()
-                .padding()
-            }
-            if game.gameOver {
+        GeometryReader { geometry in
+            let isPortrait = geometry.size.height > geometry.size.width
+            if isPortrait {
                 VStack {
-                    Text("游戏结束！")
-                        .font(.title)
-                        .shadow(color: .black, radius: 3)
-                    Text(game.blackScore > game.whiteScore ? "黑方胜" :
-                         game.whiteScore > game.blackScore ? "白方胜" : "平局")
-                        .font(.title2)
-                        .shadow(color: .black, radius: 3)
-                    Button("重新开始") {
-                        game.reset()
+                    ControlView(game: game)
+                    HStack {
+                        Spacer()
+                        PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+                        Spacer()
+                        PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+                        Spacer()
                     }
                     .padding()
-                    .background(Color.blue.opacity(0.5))
-                    .foregroundColor(.white)
-                    .shadow(color: .black, radius: 3)
-                    .cornerRadius(8)
+                    BoardView(game: game)
+                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.9,
+                               height: min(geometry.size.width, geometry.size.height) * 0.9)
+                    copyrightView()
                 }
-                .background(Color.gray.opacity(0.5))
-                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.green.opacity(0.3))
+            } else {
+                HStack {
+                    VStack {
+                        VStack {
+                            Spacer()
+                            ControlView(game: game)
+                            Spacer()
+                            PlayerScoreView(cellState: .black, count: game.blackScore, currentPlayer: game.currentPlayer == .black ? true : false)
+                            Spacer()
+                            PlayerScoreView(cellState: .white, count: game.whiteScore, currentPlayer: game.currentPlayer == .white ? true : false)
+                            Spacer()
+                        }
+                        .padding()
+                    }
+                    BoardView(game: game)
+                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.9,
+                               height: min(geometry.size.width, geometry.size.height) * 0.9)
+                    copyrightView()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.green.opacity(0.3))
             }
         }
-        .background(Color.gray.opacity(1.0))
+
+
+//        ZStack {
+//            VStack {
+//                HStack {
+//                    ScoreView(game: game)
+////                    Spacer()
+////                    CellView(
+////                        cellState: .black,
+////                        isValidDrop: false
+////                    )
+////                    .frame(width: 40, height: 40)
+////                    .overlay(Text("\(game.blackScore)")
+////                        .font(.title))
+////                    Spacer()
+////                    CellView(
+////                        cellState: .white,
+////                        isValidDrop: false
+////                    )
+////                    .frame(width: 40, height: 40)
+////                    .overlay(Text("\(game.whiteScore)")
+////                        .font(.title))
+////                    .foregroundColor(.black)
+////                    Spacer()
+//                }
+//                .padding()
+//                
+//                HStack {
+//                    Text("当前玩家： \(game.currentPlayer == .black ? "黑方" : "白方")")
+//                        .font(.headline)
+//                    CellView(
+//                        cellState: game.currentPlayer,
+//                        isValidDrop: false
+//                    )
+//                    .frame(width: 40, height: 40)
+//                }
+//                .border(Color.black, width: 2)
+//                .padding()
+//
+//                Grid(horizontalSpacing: 1, verticalSpacing: 1) {
+//                    ForEach(0..<8, id: \.self) { row in
+//                        GridRow {
+//                            ForEach(0..<8, id: \.self) { column in
+//                                CellView(
+//                                    cellState: game.board[row][column],
+//                                    isValidDrop: game.isValidDrop(row: row, column: column, player: game.currentPlayer)
+//                                )
+//                                .border(Color.black, width: 0.5)
+//                                .onTapGesture {
+//                                    if !game.gameOver {
+//                                        game.dropOnePiece(row: row, column: column)
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                .border(Color.black, width: 1)
+//                .padding()
+//                Text("设计者：Tim\n版本号：\(appVersion)")
+//                    .font(.footnote)
+//                    .padding()
+//                .padding()
+//            }
+//            if game.gameOver {
+//                VStack {
+//                    Text("游戏结束！")
+//                        .font(.title)
+//                        .shadow(color: .black, radius: 3)
+//                    Text(game.blackScore > game.whiteScore ? "黑方胜" :
+//                         game.whiteScore > game.blackScore ? "白方胜" : "平局")
+//                        .font(.title2)
+//                        .shadow(color: .black, radius: 3)
+//                    Button("重新开始") {
+//                        game.reset()
+//                    }
+//                    .padding()
+//                    .background(Color.blue.opacity(0.5))
+//                    .foregroundColor(.white)
+//                    .shadow(color: .black, radius: 3)
+//                    .cornerRadius(8)
+//                }
+//                .background(Color.gray.opacity(0.5))
+//                .padding()
+//            }
+//        }
+//        .background(Color.gray.opacity(1.0))
     }
 }
