@@ -47,13 +47,15 @@ class ReversiGame: ObservableObject {
     
     // 是否合法的落子
     func isValidDrop(row: Int, column: Int, player: Piece) -> Bool {
-        guard board[row][column] == .empty else { return false }  // 空格才能下
+        // 空格才能下
+        guard board[row][column] == .empty else { return false }
         
-        let opponent = player.opposite                            // 对手
+        // 对手
+        let opponent = player.opposite
         // 8个方向
         let directions = [(-1, -1), (-1, 0), (-1, 1),
-                          (0, -1),          (0, 1),
-                          (1, -1),  (1, 0), (1, 1)]
+                          ( 0, -1),          ( 0, 1),
+                          ( 1, -1),  (1, 0), ( 1, 1)]
         
         // 逐个方向进行判断
         for direction in directions {
@@ -91,8 +93,8 @@ class ReversiGame: ObservableObject {
 
         let opponent = currentPlayer.opposite
         let directions = [(-1, -1), (-1, 0), (-1, 1),
-                          (0, -1),          (0, 1),
-                          (1, -1),  (1, 0), (1, 1)]
+                          ( 0, -1),          ( 0, 1),
+                          ( 1, -1),  (1, 0), ( 1, 1)]
         
         // 逐个方向看看有没有可以吃的棋子，有就吃掉它
         for direction in directions {
@@ -186,7 +188,7 @@ struct CellView: View {
                 }
                 if game.isValidDrop(row: row, column: col, player: game.currentPlayer) {
                     Circle()
-                        .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.4))
+                        .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.6))
                         .padding(18)
                 }
             }
@@ -248,7 +250,7 @@ struct PlayerScoreView: View {
                 .foregroundColor(player == .black ? Color.white : Color.black)
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill((isCurrentPlayer ? Color.green : Color.gray).opacity(0.5)))
+        .background(RoundedRectangle(cornerRadius: 10).fill((isCurrentPlayer ? Color.green : Color.gray).opacity(0.75)))
     }
 }
 
@@ -260,7 +262,11 @@ struct ControlView: View {
     var body: some View {
         VStack {
             Button("重新开始") {
-                showResetConfirmation = true
+                if game.gameOver {
+                    game.reset()
+                } else {
+                    showResetConfirmation = true
+                }
             }
             .buttonStyle(.borderedProminent)
             .padding()
