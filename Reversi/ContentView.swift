@@ -347,8 +347,8 @@ struct ContentView: View {
                     }
                     .padding()
                     BoardView(game: game)
-                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.9,
-                               height: min(geometry.size.width, geometry.size.height) * 0.9)
+                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
+                               height: min(geometry.size.width, geometry.size.height) * 0.95)
                     copyrightView()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -370,8 +370,8 @@ struct ContentView: View {
                         .padding()
                     }
                     BoardView(game: game)
-                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.9,
-                               height: min(geometry.size.width, geometry.size.height) * 0.9)
+                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
+                               height: min(geometry.size.width, geometry.size.height) * 0.95)
                     copyrightView()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
