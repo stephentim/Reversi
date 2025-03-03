@@ -244,7 +244,11 @@ struct ControlView: View {
             .padding()
             
             if game.gameOver {
-                Text("游戏结束！")
+                Text("游戏结束")
+                    .font(.title)
+                    .foregroundColor(.red)
+                Text(game.blackScore > game.whiteScore ? "黑方胜" :
+                     game.whiteScore > game.blackScore ? "白方胜" : "平局")
                     .font(.title)
                     .foregroundColor(.red)
             }
