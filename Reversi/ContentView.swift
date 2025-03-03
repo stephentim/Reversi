@@ -1,12 +1,12 @@
 import SwiftUI
 import AudioToolbox
 
-enum CellState: Equatable {
+enum Piece: Equatable {
     case empty                       // 空，还没下子的
     case black                       // 黑棋子
     case white                       // 白棋子
     
-    var opposite: CellState {        // 对手
+    var opposite: Piece {            // 对手
         switch self {
         case .black: return .white
         case .white: return .black
@@ -17,8 +17,8 @@ enum CellState: Equatable {
 
 // MARK: - Model
 class ReversiGame: ObservableObject {
-    @Published var board: [[CellState]]                 // 棋盘
-    @Published var currentPlayer: CellState = .black    // 当前玩家
+    @Published var board: [[Piece]]                     // 棋盘
+    @Published var currentPlayer: Piece = .black        // 当前玩家
     @Published var gameOver = false                     // 游戏结束
     @Published var emptyCells = 0                       // 空格子数
     @Published var blackScore = 0                       // 黑方分数（棋子数）
@@ -46,7 +46,7 @@ class ReversiGame: ObservableObject {
     }
     
     // 是否合法的落子
-    func isValidDrop(row: Int, column: Int, player: CellState) -> Bool {
+    func isValidDrop(row: Int, column: Int, player: Piece) -> Bool {
         guard board[row][column] == .empty else { return false }  // 空格才能下
         
         let opponent = player.opposite                            // 对手
@@ -133,7 +133,7 @@ class ReversiGame: ObservableObject {
     }
     
     // 有没有一个可以下的点
-    func hasAnyValidMove(for player: CellState) -> Bool {
+    func hasAnyValidMove(for player: Piece) -> Bool {
         for i in 0..<8 {
             for j in 0..<8 {
                 if isValidDrop(row: i, column: j, player: player) {
@@ -196,18 +196,35 @@ struct CellView: View {
     }
 }
 
-// 计分板
+// 计分板 竖屏版
 struct ScoreView: View {
     @ObservedObject var game: ReversiGame
     
     var body: some View {
         HStack {
             Spacer()
-            PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
+            PlayerScoreView(player: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
             Spacer()
-            PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
+            PlayerScoreView(player: .empty, count: game.emptyCells, isCurrentPlayer: false)
             Spacer()
-            PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
+            PlayerScoreView(player: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
+            Spacer()
+        }
+        .padding()
+    }
+}
+// 计分板 横屏版
+struct LandscapeScoreView: View {
+    @ObservedObject var game: ReversiGame
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            PlayerScoreView(player: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
+            Spacer()
+            PlayerScoreView(player: .empty, count: game.emptyCells, isCurrentPlayer: false)
+            Spacer()
+            PlayerScoreView(player: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
             Spacer()
         }
         .padding()
@@ -216,26 +233,26 @@ struct ScoreView: View {
 
 // 单个玩家分数视图
 struct PlayerScoreView: View {
-    let cellState: CellState
+    let player: Piece
     let count: Int
     let isCurrentPlayer: Bool
     
     var body: some View {
         ZStack {
             Circle()
-                .fill(cellState == .black ? Color.black : cellState == .white ? Color.white : Color.blue.opacity(0.2))
+                .fill(player == .black ? Color.black : player == .white ? Color.white : Color.blue.opacity(0.2))
                 .frame(width: 50, height: 50)
                 .padding(4)
             Text("\(count)")
                 .font(.title.bold())
-                .foregroundColor(cellState == .black ? Color.white : Color.black)
+                .foregroundColor(player == .black ? Color.white : Color.black)
         }
         .padding()
         .background(RoundedRectangle(cornerRadius: 10).fill((isCurrentPlayer ? Color.green : Color.gray).opacity(0.5)))
     }
 }
 
-// 控制面板（竖屏）
+// 控制面板
 struct ControlView: View {
     @ObservedObject var game: ReversiGame
     @State private var showResetConfirmation = false
@@ -268,22 +285,6 @@ struct ControlView: View {
         }
     }
 }
-// 横屏控制面板
-struct LandscapeControlView: View {
-    @ObservedObject var game: ReversiGame
-    
-    var body: some View {
-        HStack {
-            Spacer()
-            VStack {
-                ControlView(game: game)
-                    .padding()
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.9)))
-                    .padding()
-            }
-        }
-    }
-}
 
 // 棋盘视图
 struct BoardView: View {
@@ -310,7 +311,7 @@ struct BoardView: View {
     }
 }
 
-// 版权信息
+// 版本信息
 struct copyrightView: View {
     // 计算属性获取版本信息
     var appVersion: String {
@@ -319,9 +320,8 @@ struct copyrightView: View {
         return "Version \(version) (Build \(build))"
     }
     var body: some View {
-        Text("设计者：Tim\n版本号：\(appVersion)")
+        Text("设计者：Tim@博学堂\n版本号：\(appVersion)")
             .font(.footnote)
-            .padding()
         .padding()
     }
 }
@@ -333,49 +333,44 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             let isPortrait = geometry.size.height > geometry.size.width
-            if isPortrait {
-                VStack {
-                    ControlView(game: game)
-                    HStack {
+            ZStack {
+                HStack {
+                    Spacer()
+                    VStack {
                         Spacer()
-                        PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
-                        Spacer()
-                        PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
-                        Spacer()
-                        PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
+                        copyrightView()
+                    }
+                }
+                if isPortrait {
+                    // 竖屏版
+                    VStack {
+                        ControlView(game: game)
+                        ScoreView(game: game)
+                        BoardView(game: game)
+                            .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
+                                   height: min(geometry.size.width, geometry.size.height) * 0.95)
                         Spacer()
                     }
-                    .padding()
-                    BoardView(game: game)
-                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
-                               height: min(geometry.size.width, geometry.size.height) * 0.95)
-                    copyrightView()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.green.opacity(0.3))
-            } else {
-                HStack {
-                    VStack {
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.green.opacity(0.3))
+                } else {
+                    // 横屏版
+                    HStack {
                         VStack {
                             Spacer()
+                            LandscapeScoreView(game: game)
+                        }
+                        BoardView(game: game)
+                            .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
+                                   height: min(geometry.size.width, geometry.size.height) * 0.95)
+                        VStack {
                             ControlView(game: game)
                             Spacer()
-                            PlayerScoreView(cellState: .black, count: game.blackScore, isCurrentPlayer: game.currentPlayer == .black ? true : false)
-                            Spacer()
-                            PlayerScoreView(cellState: .empty, count: game.emptyCells, isCurrentPlayer: false)
-                            Spacer()
-                            PlayerScoreView(cellState: .white, count: game.whiteScore, isCurrentPlayer: game.currentPlayer == .white ? true : false)
-                            Spacer()
                         }
-                        .padding()
                     }
-                    BoardView(game: game)
-                        .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
-                               height: min(geometry.size.width, geometry.size.height) * 0.95)
-                    copyrightView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.green.opacity(0.3))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.green.opacity(0.3))
             }
         }
     }
