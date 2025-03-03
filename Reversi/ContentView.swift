@@ -223,7 +223,7 @@ struct PlayerScoreView: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(cellState == .black ? Color.black : Color.white)
+                .fill(cellState == .black ? Color.black : cellState == .white ? Color.white : Color.blue.opacity(0.2))
                 .frame(width: 50, height: 50)
                 .padding(4)
             Text("\(count)")
