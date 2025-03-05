@@ -41,14 +41,14 @@ class ReversiGame: ObservableObject {
     }
     
     // 指定点是否在棋盘内
-    func isWithinBounds(row: Int, column: Int) -> Bool {
-        return row >= 0 && row < 8 && column >= 0 && column < 8
+    func isWithinBounds(row: Int, col: Int) -> Bool {
+        return row >= 0 && row < 8 && col >= 0 && col < 8
     }
     
     // 是否合法的落子
-    func isValidDrop(row: Int, column: Int, player: Piece) -> Bool {
+    func isValidDrop(row: Int, col: Int, player: Piece) -> Bool {
         // 空格才能下
-        guard board[row][column] == .empty else { return false }
+        guard board[row][col] == .empty else { return false }
         
         // 对手
         let opponent = player.opposite
@@ -60,10 +60,10 @@ class ReversiGame: ObservableObject {
         // 逐个方向进行判断
         for direction in directions {
             var x = row + direction.0
-            var y = column + direction.1
+            var y = col + direction.1
             var foundOpponent = false
             
-            while isWithinBounds(row: x, column: y) {
+            while isWithinBounds(row: x, col: y) {
                 let cell = board[x][y]
                 if cell == opponent {
                     // 如果发现对手，就做标记，继续沿着同一个方向找下一个进行判断
@@ -85,10 +85,10 @@ class ReversiGame: ObservableObject {
     }
     
     // 落1个子
-    func dropOnePiece(row: Int, column: Int) {
-        guard isValidDrop(row: row, column: column, player: currentPlayer) else { return }   // 如果不合法，不能在这里落子
+    func dropOnePiece(row: Int, col: Int) {
+        guard isValidDrop(row: row, col: col, player: currentPlayer) else { return }   // 如果不合法，不能在这里落子
         
-        board[row][column] = currentPlayer // 下子
+        board[row][col] = currentPlayer // 下子
         AudioServicesPlaySystemSound(1001) // 音效
 
         let opponent = currentPlayer.opposite
@@ -99,11 +99,11 @@ class ReversiGame: ObservableObject {
         // 逐个方向看看有没有可以吃的棋子，有就吃掉它
         for direction in directions {
             var x = row + direction.0
-            var y = column + direction.1
+            var y = col + direction.1
             // 用个数组来记录这个方向上紧挨着的对手棋子，有可能可以吃
             var adjacentCellsOfOpponentInOneDirection = [(Int, Int)]()
             
-            while isWithinBounds(row: x, column: y) && board[x][y] == opponent {
+            while isWithinBounds(row: x, col: y) && board[x][y] == opponent {
                 // 发现一个就把位置加入到临时数组，再沿着这个方向找下一个，直到不是对手的子
                 adjacentCellsOfOpponentInOneDirection.append((x, y))
                 x += direction.0
@@ -111,7 +111,7 @@ class ReversiGame: ObservableObject {
             }
             
             // 不是对手的子，有2中情况，自己的子或空白未下的
-            if isWithinBounds(row: x, column: y) && board[x][y] == currentPlayer {
+            if isWithinBounds(row: x, col: y) && board[x][y] == currentPlayer {
                 // 全部吃掉 TODO: 这里要不要判断数组是否为空？数组为空的情况是第一颗紧挨着的是自己的子
                 for (i, j) in adjacentCellsOfOpponentInOneDirection {
                     board[i][j] = currentPlayer
@@ -138,7 +138,7 @@ class ReversiGame: ObservableObject {
     func hasAnyValidMove(for player: Piece) -> Bool {
         for i in 0..<8 {
             for j in 0..<8 {
-                if isValidDrop(row: i, column: j, player: player) {
+                if isValidDrop(row: i, col: j, player: player) {
                     return true
                 }
             }
@@ -186,7 +186,7 @@ struct CellView: View {
                             }
                         }
                 }
-                if game.isValidDrop(row: row, column: col, player: game.currentPlayer) {
+                if game.isValidDrop(row: row, col: col, player: game.currentPlayer) {
                     Circle()
                         .fill((game.currentPlayer == .black ? Color.black : Color.white).opacity(0.6))
                         .padding(18)
@@ -305,7 +305,7 @@ struct BoardView: View {
                         .border(Color.black, width: 0.5)
                         .onTapGesture {
                             if !game.gameOver {
-                                game.dropOnePiece(row: row, column: col)
+                                game.dropOnePiece(row: row, col: col)
                             }
                         }
                     }
