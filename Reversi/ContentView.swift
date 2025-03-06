@@ -22,7 +22,7 @@ enum Piece: Equatable {
 }
 
 enum PlayerType {
-    case human, ai1, ai2
+    case human, minimax4, minimax5, minimax6
     
     var isAI: Bool { self != .human }
 }
@@ -189,6 +189,28 @@ class ReversiGame: ObservableObject {
         
         // 更新分数
         updateScores()
+        
+        endTurn()
+        
+//        // 轮到下一个玩家
+//        currentPlayer = currentPlayer.opposite
+//        
+//        // 看看这个玩家能不能下子，如果不能下子有2种情况，1没有可以下的子，就跳过，2下满了，就结束游戏
+//        // 这个优化流程：当你不能下，我也不能下，就结束，好处在于不用判断是否下满，减少代码量
+//        if !hasAnyValidDrop(for: currentPlayer) {
+//            currentPlayer = currentPlayer.opposite
+//            if !hasAnyValidDrop(for: currentPlayer) {
+//                gameOver = true
+//            }
+//        }
+//        // 落子后检查是否需要AI移动
+////        if aiEnabled && currentPlayer == .white && whitePlayerType.isAI {
+//        if currentPlayer == .white && whitePlayerType.isAI {
+//            startAITurnIfNeeded()
+//        }
+    }
+    // 结束当前回合
+    private func endTurn() {
         // 轮到下一个玩家
         currentPlayer = currentPlayer.opposite
         
@@ -201,13 +223,36 @@ class ReversiGame: ObservableObject {
             }
         }
         // 落子后检查是否需要AI移动
-        if aiEnabled && currentPlayer == .white && whitePlayerType.isAI {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.aiMakeMove()
-            }
+
+//        let nextPlayer = currentPlayer.opposite
+//        let legal = getAllValidMoves(for: nextPlayer)
+//        
+//        if legal.isEmpty {
+//            let currentLegal = getAllValidMoves(for: currentPlayer)
+//            if currentLegal.isEmpty {
+//                gameOver = true
+//            }
+//        } else {
+//            currentPlayer = nextPlayer
+//        }
+        
+        if !gameOver {
+            startAITurnIfNeeded()
         }
     }
-    
+    // 获取所有合法移动位置
+//    func legalMoves(for player: Piece) -> [(Int, Int)] {
+//        var moves = [(Int, Int)]()
+//        for row in 0..<8 {
+//            for col in 0..<8 where board[row][col] == .empty {
+//                if isMoveValid(row: row, col: col, player: player) {
+//                    moves.append((row, col))
+//                }
+//            }
+//        }
+//        return moves
+//    }
+
     // 有没有一个可以下的点
     func hasAnyValidDrop(for player: Piece) -> Bool {
         for i in 0..<8 {
@@ -232,13 +277,29 @@ class ReversiGame: ObservableObject {
         updateScores()
     }
     
+    // 如果需要AI移动则启动
+    func startAITurnIfNeeded() {
+        let playerType = currentPlayer == .black ? blackPlayerType : whitePlayerType
+        
+        switch playerType {
+        case .human:
+            break
+        case .minimax4:
+            aiMakeMove(depth: 4)
+        case .minimax5:
+            aiMakeMove(depth: 5)
+        case .minimax6:
+            aiMakeMove(depth: 6)
+        }
+    }
+    
     // AI决策入口
-    func aiMakeMove() {
+    func aiMakeMove(depth: Int) {
         guard aiEnabled && currentPlayer == .white && whitePlayerType.isAI else { return }
         aiThinking = true
         
         DispatchQueue.global(qos: .userInitiated).async {
-            let bestMove = self.findBestMove(depth: 5)
+            let bestMove = self.minimaxSearch(depth: depth)
             
             DispatchQueue.main.async {
                 if let move = bestMove {
@@ -249,8 +310,8 @@ class ReversiGame: ObservableObject {
         }
     }
     
-    // 寻找最优下子方案 极大极小算法实现
-    private func findBestMove(depth: Int) -> (row: Int, col: Int)? {
+    // 寻找最优下子方案 极大极小算法实现 minimaxSearch 原findBestMove
+    private func minimaxSearch(depth: Int) -> (row: Int, col: Int)? {
         var bestScore = Int.min                // 标记最好分数
         var bestMoves = [(Int, Int)]()         // 标记最好的下子
         
@@ -580,8 +641,9 @@ struct PlayerConfigView: View {
             Text(player == .black ? "黑色棋手设置：" : "白色棋手设置：")
             Picker("白色棋手设置：", selection: $type) {
                 Text("人手").tag(PlayerType.human)
-                Text("AI1:极大极小+α-β剪枝").tag(PlayerType.ai1)
-                Text("AI2:蒙特卡洛树").tag(PlayerType.ai2)
+                Text("AI1").tag(PlayerType.minimax4)
+                Text("AI2").tag(PlayerType.minimax5)
+                Text("AI3").tag(PlayerType.minimax6)
             }
             .pickerStyle(SegmentedPickerStyle())
         }
