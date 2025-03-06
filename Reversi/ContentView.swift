@@ -275,6 +275,7 @@ class ReversiGame: ObservableObject {
         currentPlayer = .black
         gameOver = false
         updateScores()
+        endTurn()
     }
     
     // 如果需要AI移动则启动
@@ -295,8 +296,8 @@ class ReversiGame: ObservableObject {
     
     // AI决策入口
     func aiMakeMove(depth: Int) {
-        guard aiEnabled && currentPlayer == .white && whitePlayerType.isAI else { return }
-        aiThinking = true
+//        guard aiEnabled && currentPlayer == .white && whitePlayerType.isAI else { return }
+//        aiThinking = true
         
         DispatchQueue.global(qos: .userInitiated).async {
             let bestMove = self.minimaxSearch(depth: depth)
@@ -304,14 +305,15 @@ class ReversiGame: ObservableObject {
             DispatchQueue.main.async {
                 if let move = bestMove {
                     self.dropOnePiece(row: move.row, col: move.col)
+                    self.aiThinking = false
                 }
-                self.aiThinking = false
             }
         }
     }
     
     // 寻找最优下子方案 极大极小算法实现 minimaxSearch 原findBestMove
     private func minimaxSearch(depth: Int) -> (row: Int, col: Int)? {
+        aiThinking = true
         var bestScore = Int.min                // 标记最好分数
         var bestMoves = [(Int, Int)]()         // 标记最好的下子
         
@@ -637,9 +639,9 @@ struct PlayerConfigView: View {
     @Binding var type: PlayerType
     
     var body: some View {
-        VStack {
-            Text(player == .black ? "黑色棋手设置：" : "白色棋手设置：")
-            Picker("白色棋手设置：", selection: $type) {
+        HStack {
+            Text(player == .black ? "黑:" : "白:")
+            Picker("", selection: $type) {
                 Text("人手").tag(PlayerType.human)
                 Text("AI1").tag(PlayerType.minimax4)
                 Text("AI2").tag(PlayerType.minimax5)
@@ -688,10 +690,13 @@ struct ContentView: View {
                     VStack {
                         ControlView(game: game)
                         ScoreView(game: game)
+                        HStack {
+                            PlayerConfigView(player: .black, type: $game.blackPlayerType)
+                            PlayerConfigView(player: .white, type: $game.whitePlayerType)
+                        }
                         BoardView(game: game)
                             .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
                                    height: min(geometry.size.width, geometry.size.height) * 0.95)
-                        PlayerConfigView(player: .white, type: $game.whitePlayerType)
                         Spacer()
                         InfoView(game: game)
                         Spacer()
@@ -711,6 +716,7 @@ struct ContentView: View {
                         Spacer()
                         VStack {
                             ControlView(game: game)
+                            PlayerConfigView(player: .black, type: $game.blackPlayerType)
                             PlayerConfigView(player: .white, type: $game.whitePlayerType)
                             Spacer()
                             InfoView(game: game)
