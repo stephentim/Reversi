@@ -21,18 +21,21 @@ enum Piece: Equatable {
     }
 }
 
-enum PlayerType {
-    case human, minimax4, minimax5, minimax6
-    
-    var isAI: Bool { self != .human }
+enum PlayerType: Hashable {
+    case human
+    case minimax(depth: Int)
 }
+
+//enum PlayerType {
+//    case human, minimax4, minimax5, minimax6
+//}
 
 // MARK: - Model
 class ReversiGame: ObservableObject {
     @Published var board: [[Piece]]                          // 棋盘
     @Published var currentPlayer: Piece = .black             // 当前玩家
     @Published var blackPlayerType: PlayerType = .human      // 黑色玩家类型
-    @Published var whitePlayerType: PlayerType = .human      // 白色玩家类型
+    @Published var whitePlayerType: PlayerType = .minimax(depth: 3)      // 白色玩家类型
     @Published var gameOver = false                          // 游戏结束
     @Published var emptyCells = 0                            // 空格子数
     @Published var blackScore = 0                            // 黑方分数（棋子数）
@@ -244,12 +247,8 @@ class ReversiGame: ObservableObject {
         switch playerType {
         case .human:
             break
-        case .minimax4:
-            aiMakeMove(depth: 4)
-        case .minimax5:
-            aiMakeMove(depth: 5)
-        case .minimax6:
-            aiMakeMove(depth: 6)
+        case .minimax(depth: let depth):
+            aiMakeMove(depth: depth)
         }
     }
     
@@ -324,7 +323,6 @@ class ReversiGame: ObservableObject {
         if depth == 0 { return evaluateBoard(board: board) }
         
         // TODO: 修改，逻辑错误
-//        let currentColor = isMaximizing ? Piece.white : Piece.black
         let currentColor = isMaximizing ? currentPlayer : currentPlayer.opposite
         let validMoves = getAllValidMoves(for: currentColor, in: board)
         
@@ -630,12 +628,11 @@ struct PlayerConfigView: View {
     
     var body: some View {
         HStack {
-//            Text(player == .black ? "黑:" : "白:")
             Picker("", selection: $type) {
                 Text("人手").tag(PlayerType.human)
-                Text("AI1").tag(PlayerType.minimax4)
-                Text("AI2").tag(PlayerType.minimax5)
-                Text("AI3").tag(PlayerType.minimax6)
+                Text("AI1").tag(PlayerType.minimax(depth: 3))
+                Text("AI2").tag(PlayerType.minimax(depth: 4))
+                Text("AI3").tag(PlayerType.minimax(depth: 5))
             }
             .pickerStyle(SegmentedPickerStyle())
         }
