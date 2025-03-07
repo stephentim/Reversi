@@ -37,7 +37,6 @@ class ReversiGame: ObservableObject {
     @Published var emptyCells = 0                            // 空格子数
     @Published var blackScore = 0                            // 黑方分数（棋子数）
     @Published var whiteScore = 0                            // 白方分数（棋子数）
-    @Published var aiEnabled = true                          // 允许AI
     @Published var aiThinking = false                        // AI在思考
     
     // 位置权重表
@@ -191,67 +190,27 @@ class ReversiGame: ObservableObject {
         updateScores()
         
         endTurn()
-        
-//        // 轮到下一个玩家
-//        currentPlayer = currentPlayer.opposite
-//        
-//        // 看看这个玩家能不能下子，如果不能下子有2种情况，1没有可以下的子，就跳过，2下满了，就结束游戏
-//        // 这个优化流程：当你不能下，我也不能下，就结束，好处在于不用判断是否下满，减少代码量
-//        if !hasAnyValidDrop(for: currentPlayer) {
-//            currentPlayer = currentPlayer.opposite
-//            if !hasAnyValidDrop(for: currentPlayer) {
-//                gameOver = true
-//            }
-//        }
-//        // 落子后检查是否需要AI移动
-////        if aiEnabled && currentPlayer == .white && whitePlayerType.isAI {
-//        if currentPlayer == .white && whitePlayerType.isAI {
-//            startAITurnIfNeeded()
-//        }
     }
     // 结束当前回合
     private func endTurn() {
-        // 轮到下一个玩家
-        currentPlayer = currentPlayer.opposite
-        
         // 看看这个玩家能不能下子，如果不能下子有2种情况，1没有可以下的子，就跳过，2下满了，就结束游戏
         // 这个优化流程：当你不能下，我也不能下，就结束，好处在于不用判断是否下满，减少代码量
-        if !hasAnyValidDrop(for: currentPlayer) {
-            currentPlayer = currentPlayer.opposite
+        if !hasAnyValidDrop(for: currentPlayer.opposite) {
             if !hasAnyValidDrop(for: currentPlayer) {
                 gameOver = true
             }
         }
-        // 落子后检查是否需要AI移动
 
-//        let nextPlayer = currentPlayer.opposite
-//        let legal = getAllValidMoves(for: nextPlayer)
-//        
-//        if legal.isEmpty {
-//            let currentLegal = getAllValidMoves(for: currentPlayer)
-//            if currentLegal.isEmpty {
-//                gameOver = true
-//            }
-//        } else {
-//            currentPlayer = nextPlayer
-//        }
-        
         if !gameOver {
+            if !hasAnyValidDrop(for: currentPlayer.opposite) {
+            } else {
+                // 轮到下一个玩家
+                currentPlayer = currentPlayer.opposite
+            }
+            
             startAITurnIfNeeded()
         }
     }
-    // 获取所有合法移动位置
-//    func legalMoves(for player: Piece) -> [(Int, Int)] {
-//        var moves = [(Int, Int)]()
-//        for row in 0..<8 {
-//            for col in 0..<8 where board[row][col] == .empty {
-//                if isMoveValid(row: row, col: col, player: player) {
-//                    moves.append((row, col))
-//                }
-//            }
-//        }
-//        return moves
-//    }
 
     // 有没有一个可以下的点
     func hasAnyValidDrop(for player: Piece) -> Bool {
@@ -296,8 +255,7 @@ class ReversiGame: ObservableObject {
     
     // AI决策入口
     func aiMakeMove(depth: Int) {
-//        guard aiEnabled && currentPlayer == .white && whitePlayerType.isAI else { return }
-//        aiThinking = true
+        aiThinking = true
         
         DispatchQueue.global(qos: .userInitiated).async {
             let bestMove = self.minimaxSearch(depth: depth)
@@ -313,17 +271,20 @@ class ReversiGame: ObservableObject {
     
     // 寻找最优下子方案 极大极小算法实现 minimaxSearch 原findBestMove
     private func minimaxSearch(depth: Int) -> (row: Int, col: Int)? {
-        aiThinking = true
         var bestScore = Int.min                // 标记最好分数
         var bestMoves = [(Int, Int)]()         // 标记最好的下子
         
         let validMoves = getAllValidMoves()    // 合法的下子
-        if validMoves.isEmpty { return nil }
+        if validMoves.isEmpty { return nil }   // 如果空
         
+        // 逐个位置搜索
         for move in validMoves {
+            // 先在这里下一个子，取得下子并吃子后的盘势
             let newBoard = simulateDropOnePiece(row: move.0, col: move.1, board: board, player: currentPlayer)
+            // 计算新盘势的分数
             let score = minimax(board: newBoard, depth: depth - 1, alpha: Int.min, beta: Int.max, isMaximizing: false)
             
+            // 取分数最高的下子位置
             if score > bestScore {
                 bestScore = score
                 bestMoves = [move]
@@ -335,27 +296,53 @@ class ReversiGame: ObservableObject {
         return bestMoves.randomElement().map { (row: $0.0, col: $0.1) }
     }
     
-    // 极大极小算法
+    // 极大极小算法，核心思想：在对手绝对理性的前提下，最大化自己的最小可能收益
+    // 1. 核心逻辑
+    // Max层（己方回合）：选择最大化自己收益的走法
+    // Min层（对手回合）：假设对手会采取最小化你收益的走法（即对手会“尽可能破坏你的优势”）
+    // 关键点：
+    // - 并非同时“让自己的分数最大，对手的分数最小”，而是递归模拟对手的最优策略，再反推自己的最优应对
+    // - 本质上是一种悲观策略：假设对手永远会做出对你最不利的决策，因此你需要提前为这种最坏情况做好准备
+    // 2. 举例说明
+    // 以井字棋（Tic-Tac-Toe）为例：
+    // - 假设你是玩家X（Max层），对手是玩家O（Min层）
+    // - 你在当前回合（Max层）会选择让棋盘局面对自己最有利的位置（比如形成双连线的位置）
+    // - 但你会预判对手下一步（Min层）会选择一个让你后续优势最小的位置（比如堵住你的双连线）
+    // 结果：
+    // - 最终选择的走法，是在对手全力阻挠下，你仍能获得的最好结果
+    // 3. 常见误解
+    // - 误区：认为算法会同时“最大化自己分数”和“最小化对手分数”
+    // - 纠正：
+    //   - 极大极小算法只关注自己的收益，但通过模拟对手的决策（Min层）来间接限制对手的优势
+    //   - 对手的“最小化”行为是算法为了保守决策而假定的前提，而非直接优化目标
+    
+    // 深度
+    // alpha
+    // beta
+    // isMaximizing
     private func minimax(board: [[Piece?]], depth: Int, alpha: Int, beta: Int, isMaximizing: Bool) -> Int {
-        if depth == 0 {
-            return evaluateBoard(board: board)
-        }
+        if depth == 0 { return evaluateBoard(board: board) }
         
-        let currentColor = isMaximizing ? Piece.white : Piece.black
+        // TODO: 修改，逻辑错误
+//        let currentColor = isMaximizing ? Piece.white : Piece.black
+        let currentColor = isMaximizing ? currentPlayer : currentPlayer.opposite
         let validMoves = getAllValidMoves(for: currentColor, in: board)
         
-        if validMoves.isEmpty {
-            return evaluateBoard(board: board)
-        }
+        if validMoves.isEmpty { return evaluateBoard(board: board) }
         
         var alpha = alpha
         var beta = beta
         
+        // 如果最大化
         if isMaximizing {
             var maxEval = Int.min
+            // 逐个位置搜索
             for move in validMoves {
+                // 先在这里下一个子，取得下子并吃子后的盘势
                 let newBoard = simulateDropOnePiece(row: move.0, col: move.1, board: board, player: currentColor)
+                // 计算新盘势的分数
                 let eval = minimax(board: newBoard, depth: depth - 1, alpha: alpha, beta: beta, isMaximizing: false)
+                // 取最大分数
                 maxEval = max(maxEval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha { break }
@@ -363,9 +350,13 @@ class ReversiGame: ObservableObject {
             return maxEval
         } else {
             var minEval = Int.max
+            // 逐个位置搜索
             for move in validMoves {
+                // 先在这里下一个子，取得下子并吃子后的盘势
                 let newBoard = simulateDropOnePiece(row: move.0, col: move.1, board: board, player: currentColor)
+                // 计算新盘势的分数
                 let eval = minimax(board: newBoard, depth: depth - 1, alpha: alpha, beta: beta, isMaximizing: true)
+                // 取最小分数
                 minEval = min(minEval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha { break }
@@ -376,29 +367,29 @@ class ReversiGame: ObservableObject {
     
     // 棋盘评估函数
     private func evaluateBoard(board: [[Piece?]]) -> Int {
-        var score = 0
-        var mobility = 0
-        var stability = 0
-        
+        var score = 0         // 位置分
+        var mobility = 0      // 行动力分
+        var stability = 0     // 稳定子分
+ 
         // 位置权重评估
         for i in 0..<8 {
             for j in 0..<8 {
                 guard let piece = board[i][j] else { continue }
-                let weight = piece == Piece.white ? positionWeights[i][j] : -positionWeights[i][j]
+                let weight = piece == currentPlayer ? positionWeights[i][j] : -positionWeights[i][j]
                 score += weight
             }
         }
         
         // 行动力评估
-        let aiMoves = getAllValidMoves(for: Piece.white, in: board).count
-        let playerMoves = getAllValidMoves(for: Piece.black, in: board).count
-        mobility = (aiMoves - playerMoves) * 10
+        let playerMoves = getAllValidMoves(for: currentPlayer, in: board).count
+        let oppositeMoves = getAllValidMoves(for: currentPlayer.opposite, in: board).count
+        mobility = (playerMoves - oppositeMoves) * 10
         
         // 稳定子评估（角落）
         let corners = [(0,0), (0,7), (7,0), (7,7)]
         for (i,j) in corners {
             guard let piece = board[i][j] else { continue }
-            stability += piece == Piece.white ? 50 : -50
+            stability += piece == currentPlayer ? 50 : -50
         }
         
         return score + mobility + stability
@@ -427,7 +418,6 @@ class ReversiGame: ObservableObject {
         guard isValidDrop(row: row, col: col, board: newBoard, player: player) else { return newBoard }   // 如果不合法，不能在这里落子
         
         newBoard[row][col] = player // 下子
-        //        AudioServicesPlaySystemSound(1001) // 音效
         
         let opponent = player.opposite
         let directions = [(-1, -1), (-1, 0), (-1, 1),
@@ -640,7 +630,7 @@ struct PlayerConfigView: View {
     
     var body: some View {
         HStack {
-            Text(player == .black ? "黑:" : "白:")
+//            Text(player == .black ? "黑:" : "白:")
             Picker("", selection: $type) {
                 Text("人手").tag(PlayerType.human)
                 Text("AI1").tag(PlayerType.minimax4)
@@ -691,8 +681,10 @@ struct ContentView: View {
                         ControlView(game: game)
                         ScoreView(game: game)
                         HStack {
+                            Spacer()
                             PlayerConfigView(player: .black, type: $game.blackPlayerType)
                             PlayerConfigView(player: .white, type: $game.whitePlayerType)
+                            Spacer()
                         }
                         BoardView(game: game)
                             .frame(width: min(geometry.size.width, geometry.size.height) * 0.95,
